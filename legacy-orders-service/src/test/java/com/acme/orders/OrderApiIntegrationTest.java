@@ -2,11 +2,12 @@ package com.acme.orders;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -29,9 +30,12 @@ class OrderApiIntegrationTest {
         mockMvc.perform(post("/api/orders").with(httpBasic("operator", "operator"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"customerRef": "ACME-IT", "lines": [{"sku": "WIDGET-9", "qty": 2}]}"""))
+                                {"customerRef": "ACME-IT", "lines": [{"sku": "WIDGET-9", "qty": 2}], "addedByNewerClient": true}"""))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").isNumber());
+                .andExpect(jsonPath("$.id").isNumber())
+                // wire-format contract that must survive JSON library upgrades:
+                // unknown request fields are ignored, timestamps are ISO-8601 strings
+                .andExpect(jsonPath("$.createdAt").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T.*Z")));
 
         mockMvc.perform(get("/api/orders").with(httpBasic("viewer", "viewer")))
                 .andExpect(status().isOk())

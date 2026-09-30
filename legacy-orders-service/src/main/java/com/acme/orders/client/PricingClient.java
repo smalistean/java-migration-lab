@@ -1,41 +1,41 @@
 package com.acme.orders.client;
 
 import java.math.BigDecimal;
-import java.util.Collections;
+import java.net.http.HttpClient;
 import java.util.Map;
 
 import com.acme.orders.config.AppProperties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
 public class PricingClient {
 
     private static final Logger log = LoggerFactory.getLogger(PricingClient.class);
+    private static final ParameterizedTypeReference<Map<String, Object>> JSON_OBJECT = new ParameterizedTypeReference<>() {};
 
-    private final RestTemplate restTemplate;
-    private final AppProperties properties;
+    private final RestClient restClient;
 
-    public PricingClient(RestTemplateBuilder builder, AppProperties properties) {
-        this.properties = properties;
-        this.restTemplate = builder
-                .connectTimeout(properties.getPricingTimeout())
-                .readTimeout(properties.getPricingTimeout())
-                .rootUri(properties.getPricingBaseUrl())
+    /** The injected builder carries Boot's message converters and tracing instrumentation. */
+    public PricingClient(RestClient.Builder builder, AppProperties properties) {
+        var requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(properties.getPricingTimeout()).build());
+        requestFactory.setReadTimeout(properties.getPricingTimeout());
+        this.restClient = builder
+                .baseUrl(properties.getPricingBaseUrl())
+                .requestFactory(requestFactory)
                 .build();
     }
 
-    @SuppressWarnings("unchecked")
     public BigDecimal priceFor(String sku) {
-        String url = UriComponentsBuilder.fromPath("/prices/{sku}").buildAndExpand(sku).toUriString();
         try {
-            Map<String, Object> body = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> body = restClient.get().uri("/prices/{sku}", sku).retrieve().body(JSON_OBJECT);
             if (body == null || !body.containsKey("amount")) {
                 return BigDecimal.ZERO;
             }
@@ -44,9 +44,5 @@ public class PricingClient {
             log.warn("Pricing lookup failed for {}: {}", sku, e.getMessage());
             return BigDecimal.ZERO;
         }
-    }
-
-    public Map<String, BigDecimal> priceAll() {
-        return Collections.emptyMap();
     }
 }
