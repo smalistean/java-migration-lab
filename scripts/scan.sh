@@ -9,7 +9,7 @@ JDK25="${JDK25_HOME:-$HOME/.sdkman/candidates/java/25.0.4-tem}"
 
 cd "$APP_DIR" || { echo "no such dir: $APP_DIR"; exit 1; }
 
-echo "############ 1. compile on 17 ############"
+echo "############ 1. compile ############"
 JAVA_HOME="$JDK17" ./gradlew classes -q || exit 1
 CLASSES=build/classes/java/main
 CP=$(JAVA_HOME="$JDK17" ./gradlew -q printRuntimeClasspath 2>/dev/null | tail -1)

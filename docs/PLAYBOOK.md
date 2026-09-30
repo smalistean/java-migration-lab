@@ -25,10 +25,14 @@ reproduced here with their exact output.
 ### Sequencing
 
 ```
-floors → jakarta + Boot 3.0 → walk to 3.5, zero deprecations → JDK 21 → Gradle 9 → JDK 25 → Boot 4
+floors → Boot 3.5 (jakarta, Security 6, Hibernate 6) → JDK source hazards → Gradle 9 → JDK 25 → Boot 4
 ```
 
-- Toolchains first, so the JDK that compiles is independent of the JDK running Gradle.
+This is the order used in this repo (tags `v2` … `v8`). For apps further behind, step through
+Boot 3.0 and JDK 21 as intermediate stops.
+
+- Framework before build tool: the Boot 2.7 Gradle plugin does not run on Gradle 9.
+- Toolchains, so the JDK that compiles is independent of the JDK running Gradle.
 - One axis per step. Boot, JDK, and Gradle are never bumped in the same change, so a
   failure has one possible cause and a rollback is one revert.
 - Boot 4 last: it removes what 3.x deprecated, so a warning-free 3.5 makes it a small step.
@@ -42,6 +46,8 @@ floors → jakarta + Boot 3.0 → walk to 3.5, zero deprecations → JDK 21 → 
 - [ ] trace/span MDC keys after Sleuth → Micrometer Tracing
 - [ ] agents (APM, JaCoCo, Mockito) under restricted dynamic attach
 - [ ] `--add-opens` flags that are hiding reflective access
+- [ ] every read endpoint called against real data after any persistence or session-scope change
+- [ ] JDK warnings raised by dependencies (`sun.misc.Unsafe` from shaded libraries)
 
 ---
 
@@ -105,3 +111,35 @@ Format: symptom (verbatim), root cause, fix, automatable, blast radius.
 - **Fix** Per-app: explicit mapping, gateway redirect, or client change.
 - **Automatable** Detection only.
 - **Blast radius** Any app whose clients send trailing slashes; runtime, after deploy, with a green build.
+
+### 6. JSON serialisation recursion (latent, pre-existing)
+
+- **Symptom** `Could not write JSON: Document nesting depth (1001) exceeds the maximum allowed`
+- **Cause** Bidirectional `PurchaseOrder` ↔ `OrderLine` serialised from both sides.
+- **Fix** `@JsonIgnore` on the back-reference; test asserts the shape.
+- **Automatable** Detection only.
+- **Blast radius** Not caused by the migration, but surfaced by it — expect migrations to uncover defects the owning team did not know about, and agree up front who fixes them.
+
+### 7. Lazy loading after disabling open-in-view
+
+- **Symptom** `GET /api/orders` → 500, `failed to lazily initialize a collection`, only once data exists.
+- **Cause** `spring.jpa.open-in-view: false` set during the Boot 3 step; entities serialised outside a session.
+- **Fix** Entity graphs on the read queries; full-stack `@SpringBootTest` over HTTP.
+- **Automatable** No.
+- **Blast radius** Runtime only; sliced tests with a mocked service cannot see it. Carried by tags `v3`–`v6` here.
+
+### 8. Boot 4: trace ids disappear from logs
+
+- **Symptom** Log prefix `[6f1e…,a3c1…]` becomes `[,]`. No error, no warning, green build.
+- **Cause** A bare `micrometer-tracing-bridge-otel` dependency is no longer enough to auto-configure tracing.
+- **Fix** `spring-boot-starter-opentelemetry`.
+- **Automatable** Dependency swap yes; noticing it requires looking at a log line.
+- **Blast radius** Every traced app; breaks log correlation and whatever alerts depend on it.
+
+### 9. JDK 25: `sun.misc.Unsafe` warning from a dependency
+
+- **Symptom** `WARNING: sun.misc.Unsafe::objectFieldOffset has been called by io.opentelemetry.internal.shaded.jctools.util.UnsafeAccess`
+- **Cause** Shaded JCTools inside an older OpenTelemetry SDK; the application's own code was already clean.
+- **Fix** Library upgrade (arrived with the Boot 4 BOM).
+- **Automatable** Yes — but `jdeps` on application classes does not see it; it only shows at runtime.
+- **Blast radius** A warning today, a failure when the method is removed.

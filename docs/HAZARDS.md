@@ -9,6 +9,10 @@ determines effort across a large fleet.
 
 Items marked ✔ were reproduced against this repo; their output is quoted.
 
+**This describes the code at tag `v1-boot27-java17`.** Section A was resolved in `v3-boot35`,
+B in `v2-dependency-floors`, `v4-jdk-hazards` and `v6-java25`, C in `v5-gradle9`, D in
+`v3-boot35`, E in `v8-boot4`. The README maps tags to commits.
+
 ---
 
 ## A. Spring Boot 2.7 → 3.x
@@ -180,10 +184,14 @@ Triggered by top-level `sourceCompatibility`/`targetCompatibility`; fix with a `
 
 ---
 
-## E. Boot 3.5 → 4
+## E. Boot 3.5 → 4 (as encountered in `v8-boot4`)
 
-Boot 4 removes what 3.x deprecated, so the effective strategy is: reach 3.5 with zero
-deprecation warnings first. Beyond that, the main work items are the modularised starters
-(dependency coordinates change) and Jackson 2 → 3 (`com.fasterxml.jackson` → `tools.jackson`),
-for which `JacksonConfig` is this project's touchpoint. Details to be recorded against the
-official migration guide as that step lands.
+Boot 4 removes what 3.x deprecated, so the precondition is a 3.5 build with no deprecated API usage.
+
+| Hazard | Symptom | Fix | Auto |
+|---|---|---|---|
+| Modular starters | `package org.springframework.boot.web.client does not exist`, `…test.autoconfigure.web.servlet does not exist` | `starter-webmvc`, `starter-restclient`, per-technology test starters; `@WebMvcTest`/`@AutoConfigureMockMvc` moved packages | yes |
+| Jackson 2 → 3 | `package org.springframework.boot.autoconfigure.jackson does not exist` | customizer removed; unknown-property tolerance and ISO-8601 dates are now defaults — assert the wire format in a test rather than trusting that | partial |
+| `RestTemplateBuilder` relocated | compile error | moved to `RestClient` | partial |
+| Tracing no longer wired by a bare bridge dependency | **none** — build green, log prefix changes from `[traceId,spanId]` to `[,]` | `spring-boot-starter-opentelemetry` | detect only |
+| springdoc major version | runtime incompatibility | springdoc 3.x | yes |
