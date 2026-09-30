@@ -1,8 +1,8 @@
 package com.acme.orders.domain;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -15,8 +15,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -39,9 +37,8 @@ public class PurchaseOrder {
     @Column(name = "totalAmount", precision = 19, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "createdAt")
-    private Date createdAt = new Date();
+    private Instant createdAt = Instant.now();
 
     @Column(name = "shippingNotes", length = 4000)
     private String shippingNotes;
@@ -61,8 +58,8 @@ public class PurchaseOrder {
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
 
-    public Date getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
     public String getShippingNotes() { return shippingNotes; }
     public void setShippingNotes(String shippingNotes) { this.shippingNotes = shippingNotes; }

@@ -30,13 +30,6 @@ dependencies {
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
 
-    implementation 'org.apache.commons:commons-lang3'
-    implementation 'commons-io:commons-io:2.22.0'
-    implementation 'com.google.guava:guava:33.7.2-jre'
-
-    compileOnly 'org.projectlombok:lombok:1.18.48'
-    annotationProcessor 'org.projectlombok:lombok:1.18.48'
-
     runtimeOnly 'com.h2database:h2'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -44,10 +37,14 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// Mockito is attached as an explicit agent rather than self-attaching at runtime,
+// which newer JDKs warn about and will eventually disallow (JEP 451).
+configurations { mockitoAgent }
+dependencies { mockitoAgent('org.mockito:mockito-core') { transitive = false } }
+
 test {
     useJUnitPlatform()
-    // the APM agent our platform team requires
-    jvmArgs '-XX:+EnableDynamicAgentLoading'
+    jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
 }
 
 // --- custom packaging task ---

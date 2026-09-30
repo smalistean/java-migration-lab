@@ -4,9 +4,11 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 /**
- * Scratch file used while streaming large order exports.
+ * Scratch file used while streaming large order exports. Use with try-with-resources.
  */
 public class TempSpoolFile implements Closeable {
 
@@ -19,8 +21,7 @@ public class TempSpoolFile implements Closeable {
     }
 
     public void write(String line) throws IOException {
-        handle.writeBytes(line);
-        handle.writeBytes("\n");
+        handle.write((line + "\n").getBytes(StandardCharsets.UTF_8));
     }
 
     public File getFile() {
@@ -30,16 +31,6 @@ public class TempSpoolFile implements Closeable {
     @Override
     public void close() throws IOException {
         handle.close();
-    }
-
-    /** Safety net: make sure the OS handle is released even if close() is missed. */
-    @Override
-    protected void finalize() throws Throwable {
-        try {
-            handle.close();
-            file.delete();
-        } finally {
-            super.finalize();
-        }
+        Files.deleteIfExists(file.toPath());
     }
 }

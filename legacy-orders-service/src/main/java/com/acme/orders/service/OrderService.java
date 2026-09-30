@@ -1,9 +1,10 @@
 package com.acme.orders.service;
 
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,8 +29,9 @@ public class OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
-    // shared across threads, reused per call
-    private static final SimpleDateFormat AUDIT_FORMAT = new SimpleDateFormat("dd/MMM/yyyy HH:mm:ss");
+    // immutable and thread-safe; numeric month and fixed zone so output does not vary by host or JDK
+    private static final DateTimeFormatter AUDIT_FORMAT =
+            DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss'Z'").withZone(ZoneOffset.UTC);
 
     private final OrderRepository repository;
     private final PricingClient pricingClient;
@@ -43,16 +45,16 @@ public class OrderService {
 
     @PostConstruct
     public void warmUp() {
-        log.info("OrderService starting at {}", AUDIT_FORMAT.format(new Date()));
+        log.info("OrderService starting at {}", AUDIT_FORMAT.format(Instant.now()));
     }
 
     @PreDestroy
     public void shutdown() {
-        log.info("OrderService stopping at {}", AUDIT_FORMAT.format(new Date()));
+        log.info("OrderService stopping at {}", AUDIT_FORMAT.format(Instant.now()));
     }
 
     public List<PurchaseOrder> find(String customerRef) {
-        if (customerRef == null || customerRef.trim().isEmpty()) {
+        if (customerRef == null || customerRef.isBlank()) {
             return repository.findAll();
         }
         return repository.findByCustomerRef(customerRef);
@@ -80,7 +82,7 @@ public class OrderService {
         }
         order.setTotalAmount(total);
         order.setStatus(OrderStatus.NEW);
-        order.setCreatedAt(new Date());
+        order.setCreatedAt(Instant.now());
         return repository.save(order);
     }
 
@@ -91,9 +93,8 @@ public class OrderService {
 
     @Scheduled(fixedDelayString = "${acme.orders.sweep-interval-ms:60000}")
     public void sweepStaleOrders() {
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DAY_OF_MONTH, -30);
-        List<PurchaseOrder> stale = repository.findRecentByStatus(OrderStatus.NEW, cal.getTime());
-        log.debug("Sweep found {} stale orders as of {}", stale.size(), AUDIT_FORMAT.format(new Date()));
+        Instant since = Instant.now().minus(Duration.ofDays(30));
+        List<PurchaseOrder> stale = repository.findRecentByStatus(OrderStatus.NEW, since);
+        log.debug("Sweep found {} stale orders as of {}", stale.size(), AUDIT_FORMAT.format(Instant.now()));
     }
 }
