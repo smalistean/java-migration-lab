@@ -7,9 +7,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.transaction.Transactional;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.acme.orders.client.PricingClient;
 import com.acme.orders.config.AppProperties;

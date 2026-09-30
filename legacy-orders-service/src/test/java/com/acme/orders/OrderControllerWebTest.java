@@ -2,6 +2,8 @@ package com.acme.orders;
 
 import java.util.Arrays;
 
+import com.acme.orders.config.SecurityConfig;
+import com.acme.orders.domain.OrderLine;
 import com.acme.orders.domain.PurchaseOrder;
 import com.acme.orders.service.OrderService;
 import com.acme.orders.web.OrderController;
@@ -9,7 +11,8 @@ import com.acme.orders.web.OrderController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,12 +23,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = OrderController.class)
+@Import(SecurityConfig.class)
 class OrderControllerWebTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private OrderService orderService;
 
     @Test
@@ -34,11 +38,16 @@ class OrderControllerWebTest {
         PurchaseOrder order = new PurchaseOrder();
         order.setId(1L);
         order.setCustomerRef("ACME-1");
+        OrderLine line = new OrderLine();
+        line.setSku("W-1");
+        order.addLine(line);
         when(orderService.find(any())).thenReturn(Arrays.asList(order));
 
         mockMvc.perform(get("/api/orders"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].customerRef").value("ACME-1"));
+                .andExpect(jsonPath("$[0].customerRef").value("ACME-1"))
+                .andExpect(jsonPath("$[0].lines[0].sku").value("W-1"))
+                .andExpect(jsonPath("$[0].lines[0].order").doesNotExist());
     }
 
     @Test

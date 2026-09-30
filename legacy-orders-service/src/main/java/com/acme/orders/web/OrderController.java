@@ -2,8 +2,8 @@ package com.acme.orders.web;
 
 import java.util.List;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 
 import com.acme.orders.domain.PurchaseOrder;
 import com.acme.orders.service.OrderService;

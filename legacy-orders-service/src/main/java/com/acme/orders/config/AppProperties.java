@@ -3,10 +3,8 @@ package com.acme.orders.config;
 import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.ConstructorBinding;
 
 @ConfigurationProperties(prefix = "acme.orders")
-@ConstructorBinding
 public class AppProperties {
 
     private final String pricingBaseUrl;

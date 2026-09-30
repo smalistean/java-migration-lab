@@ -1,50 +1,39 @@
 server:
   port: 8080
-  max-http-header-size: 16KB
+  max-http-request-header-size: 16KB
   servlet:
     context-path: /
 
 spring:
   application:
     name: legacy-orders-service
-  main:
-    allow-circular-references: true
-  mvc:
-    pathmatch:
-      matching-strategy: ANT_PATH_MATCHER
   datasource:
     url: jdbc:h2:mem:orders;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password:
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-        jdbc:
-          lob:
-            non_contextual_creation: true
-        id:
-          new_generator_mappings: false
-  redis:
-    host: localhost
-    port: 6379
-  sleuth:
-    sampler:
-      probability: 0.1
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
+  tracing:
+    sampling:
+      probability: 0.1
   health:
     probes:
       enabled: true

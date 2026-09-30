@@ -25,8 +25,8 @@ public class PricingClient {
     public PricingClient(RestTemplateBuilder builder, AppProperties properties) {
         this.properties = properties;
         this.restTemplate = builder
-                .setConnectTimeout(properties.getPricingTimeout())
-                .setReadTimeout(properties.getPricingTimeout())
+                .connectTimeout(properties.getPricingTimeout())
+                .readTimeout(properties.getPricingTimeout())
                 .rootUri(properties.getPricingBaseUrl())
                 .build();
     }

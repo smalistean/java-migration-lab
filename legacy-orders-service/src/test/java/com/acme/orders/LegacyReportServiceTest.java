@@ -9,39 +9,35 @@ import com.acme.orders.config.AppProperties;
 import com.acme.orders.repo.OrderRepository;
 import com.acme.orders.service.ReportService;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
-/** Still on JUnit 4 because of the TemporaryFolder rule. */
-@RunWith(MockitoJUnitRunner.class)
-public class LegacyReportServiceTest {
+@ExtendWith(MockitoExtension.class)
+class LegacyReportServiceTest {
 
-    @Rule
-    public TemporaryFolder folder = new TemporaryFolder();
+    @TempDir
+    File folder;
 
     @Mock
     private OrderRepository repository;
 
     private ReportService reportService;
 
-    @Before
-    public void setUp() throws Exception {
-        AppProperties props = new AppProperties(
-                "http://localhost:9090", null, 50, folder.getRoot().getAbsolutePath());
+    @BeforeEach
+    void setUp() {
+        AppProperties props = new AppProperties("http://localhost:9090", null, 50, folder.getAbsolutePath());
         reportService = new ReportService(repository, props);
     }
 
     @Test
-    public void readsSkuAllowListSkippingComments() throws Exception {
-        File allow = new File(folder.getRoot(), "sku-allowlist.txt");
+    void readsSkuAllowListSkippingComments() throws Exception {
+        File allow = new File(folder, "sku-allowlist.txt");
         try (PrintWriter w = new PrintWriter(new FileWriter(allow))) {
             w.println("# merchandising export");
             w.println("widget-1");
@@ -51,8 +47,6 @@ public class LegacyReportServiceTest {
 
         List<String> skus = reportService.readSkuAllowList();
 
-        assertEquals(2, skus.size());
-        assertTrue(skus.contains("WIDGET-1"));
-        assertTrue(skus.contains("CAFÉ-CREMA"));
+        assertThat(skus).containsExactly("WIDGET-1", "CAFÉ-CREMA");
     }
 }
