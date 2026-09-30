@@ -1,24 +1,29 @@
 plugins {
-    id 'org.springframework.boot' version '3.5.16'
-    id 'io.spring.dependency-management' version '1.1.7'
     id 'java'
     id 'jacoco'
+    id 'org.springframework.boot' version '3.5.16'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.acme'
 version = '1.4.0-SNAPSHOT'
 
-sourceCompatibility = '17'
-targetCompatibility = '17'
+// The toolchain decides which JDK compiles and tests the code, independently of the JDK running Gradle.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
 
 repositories {
     mavenCentral()
 }
 
-// --- read at CONFIGURATION time, straight from the environment ---
-def buildId = System.getenv('BUILD_ID') ?: 'local'
-def buildHost = InetAddress.getLocalHost().getHostName()
-ext.releaseNotes = new File("${projectDir}/RELEASE_NOTES.txt")
+// Mockito is attached as an explicit agent rather than self-attaching at runtime,
+// which newer JDKs warn about and will eventually disallow (JEP 451).
+configurations {
+    mockitoAgent
+}
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -26,7 +31,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
 
@@ -35,57 +39,43 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    mockitoAgent('org.mockito:mockito-core') { transitive = false }
 }
 
-// Mockito is attached as an explicit agent rather than self-attaching at runtime,
-// which newer JDKs warn about and will eventually disallow (JEP 451).
-configurations { mockitoAgent }
-dependencies { mockitoAgent('org.mockito:mockito-core') { transitive = false } }
-
-test {
+tasks.named('test', Test) {
     useJUnitPlatform()
-    jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
+    def agent = configurations.mockitoAgent
+    jvmArgumentProviders.add({ ["-javaagent:${agent.singleFile}".toString()] } as CommandLineArgumentProvider)
 }
 
-// --- custom packaging task ---
-class StampBuildTask extends DefaultTask {
-    // a live File handle, held as task state
-    // marked @Internal in 2021 to silence Gradle's validation warning
-    @Internal
-    File notesFile
-    @Internal
-    String stamp
+tasks.named('jar') {
+    archiveBaseName = 'orders'
+}
+
+/**
+ * Writes build/build-info.txt. Inputs and outputs are declared, so the task is
+ * up-to-date-checked, cacheable, and never touches the Project model at execution time.
+ */
+@CacheableTask
+abstract class StampBuildTask extends DefaultTask {
+    @Input abstract Property<String> getStamp()
+    @Input abstract Property<String> getProjectName()
+    @Input abstract Property<String> getProjectVersion()
+    @OutputFile abstract RegularFileProperty getOutputFile()
 
     @TaskAction
     void stampIt() {
-        def out = new File(project.buildDir, 'build-info.txt')
-        out.parentFile.mkdirs()
-        out.text = "stamp=${stamp}\nproject=${project.name}\nversion=${project.version}\n"
-        println "Stamped ${out.absolutePath} for project ${project.name}"
+        outputFile.get().asFile.text =
+                "stamp=${stamp.get()}\nproject=${projectName.get()}\nversion=${projectVersion.get()}\n"
     }
 }
 
 tasks.register('stampBuild', StampBuildTask) {
-    notesFile = releaseNotes
-    stamp = "${buildId}@${buildHost}"
-}
-
-tasks.register('printReport') {
-    doLast {
-        println "Report for ${project.name}"
-        println "Build dir: ${project.buildDir}"
-        println "Java home: ${System.getProperty('java.home')}"
-        println "Deps: ${project.configurations.runtimeClasspath.files.size()} jars"
-    }
-}
-
-jar {
-    archiveBaseName = 'orders'
-    destinationDirectory = file("${buildDir}/dist")
-}
-
-gradle.buildFinished { result ->
-    println "Build finished for ${rootProject.name}: ${result.failure ? 'FAILED' : 'OK'}"
+    stamp = providers.environmentVariable('BUILD_ID').orElse('local')
+    projectName = project.name
+    projectVersion = project.version.toString()
+    outputFile = layout.buildDirectory.file('build-info.txt')
 }
 
 tasks.named('build') { dependsOn 'stampBuild' }
