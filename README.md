@@ -79,7 +79,7 @@ This is the argument for a per-app runtime pre-flight in a migration programme:
 
 ## Run it
 
-Needs JDK 17+ to launch Gradle; the wrapper provisions the rest through toolchains.
+Needs a JDK 25 installation (the compile/test toolchain) and any JDK 17+ to launch Gradle; the wrapper fetches Gradle itself.
 
 ```bash
 cd legacy-orders-service
