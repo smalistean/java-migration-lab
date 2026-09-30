@@ -11,7 +11,7 @@ version = '1.4.0-SNAPSHOT'
 // The toolchain decides which JDK compiles and tests the code, independently of the JDK running Gradle.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
